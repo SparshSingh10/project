@@ -1,0 +1,157 @@
+import java.util.Scanner;
+
+public class HillCipher {
+
+    // Function to find the modular inverse of a matrix
+    public static int[][] findKeyInverse(int[][] keyMatrix, int modulus) {
+        int determinant = calculateDeterminant(keyMatrix, modulus);
+        int inverseDeterminant = findMultiplicativeInverse(determinant, modulus);
+
+        if (inverseDeterminant == -1) {
+            System.out.println("The key matrix is not invertible under modulo " + modulus + ".");
+            return null;
+        }
+
+        int[][] adjugate = findAdjugate(keyMatrix, modulus);
+        int[][] inverseMatrix = new int[adjugate.length][adjugate[0].length];
+
+        // Multiply adjugate by modular inverse of determinant
+        for (int i = 0; i < adjugate.length; i++) {
+            for (int j = 0; j < adjugate[0].length; j++) {
+                inverseMatrix[i][j] = (adjugate[i][j] * inverseDeterminant) % modulus;
+                if (inverseMatrix[i][j] < 0) {
+                    inverseMatrix[i][j] += modulus;
+                }
+            }
+        }
+        return inverseMatrix;
+    }
+
+    // Function to calculate the determinant of a matrix
+    public static int calculateDeterminant(int[][] matrix, int modulus) {
+        return ((matrix[0][0] * matrix[1][1] - matrix[0][1] * matrix[1][0]) % modulus + modulus) % modulus;
+    }
+
+    // Function to find the multiplicative inverse of a number under modulo
+    public static int findMultiplicativeInverse(int num, int modulus) {
+        for (int i = 1; i < modulus; i++) {
+            if ((num * i) % modulus == 1) {
+                return i;
+            }
+        }
+        return -1; // No inverse exists
+    }
+
+    // Function to find the adjugate of a 2x2 matrix
+    public static int[][] findAdjugate(int[][] matrix, int modulus) {
+        int[][] adjugate = new int[2][2];
+        adjugate[0][0] = matrix[1][1];
+        adjugate[0][1] = -matrix[0][1];
+        adjugate[1][0] = -matrix[1][0];
+        adjugate[1][1] = matrix[0][0];
+
+        // Apply modulo
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 2; j++) {
+                adjugate[i][j] = ((adjugate[i][j] % modulus) + modulus) % modulus;
+            }
+        }
+        return adjugate;
+    }
+
+    // Encrypt plaintext using the key matrix
+    public static String encrypt(String plaintext, int[][] keyMatrix, int modulus) {
+        plaintext = plaintext.toLowerCase().replaceAll("\\s+", "");
+        int length = plaintext.length();
+        if (length % 2 != 0) {
+            plaintext += 'x'; // Pad with 'x' if odd length
+        }
+
+        StringBuilder ciphertext = new StringBuilder();
+        for (int i = 0; i < length; i += 2) {
+            int[] pair = {plaintext.charAt(i) - 'a', plaintext.charAt(i + 1) - 'a'};
+            int[] encryptedPair = new int[2];
+
+            for (int row = 0; row < 2; row++) {
+                encryptedPair[row] = 0;
+                for (int col = 0; col < 2; col++) {
+                    encryptedPair[row] += keyMatrix[row][col] * pair[col];
+                }
+                encryptedPair[row] %= modulus;
+            }
+            ciphertext.append((char) (encryptedPair[0] + 'A')).append((char) (encryptedPair[1] + 'A'));
+        }
+        return ciphertext.toString();
+    }
+
+    // Decrypt ciphertext using the inverse key matrix
+    public static String decrypt(String ciphertext, int[][] inverseKeyMatrix, int modulus) {
+        ciphertext = ciphertext.toUpperCase();
+        StringBuilder plaintext = new StringBuilder();
+
+        for (int i = 0; i < ciphertext.length(); i += 2) {
+            int[] pair = {ciphertext.charAt(i) - 'A', ciphertext.charAt(i + 1) - 'A'};
+            int[] decryptedPair = new int[2];
+
+            for (int row = 0; row < 2; row++) {
+                decryptedPair[row] = 0;
+                for (int col = 0; col < 2; col++) {
+                    decryptedPair[row] += inverseKeyMatrix[row][col] * pair[col];
+                }
+                decryptedPair[row] %= modulus;
+                if (decryptedPair[row] < 0) {
+                    decryptedPair[row] += modulus;
+                }
+            }
+            plaintext.append((char) (decryptedPair[0] + 'a')).append((char) (decryptedPair[1] + 'a'));
+        }
+        return plaintext.toString();
+    }
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.println("Hill Cipher Algorithm");
+
+        // Input key matrix
+        System.out.println("Enter the 2x2 key matrix:");
+        int[][] keyMatrix = new int[2][2];
+        for (int i = 0; i < 2; i++) {
+            for (int j = 0; j < 2; j++) {
+                keyMatrix[i][j] = scanner.nextInt();
+            }
+        }
+
+        int modulus = 26;
+
+        // Calculate the inverse key matrix
+        int[][] inverseKeyMatrix = findKeyInverse(keyMatrix, modulus);
+        if (inverseKeyMatrix == null) {
+            return ;
+        }
+
+        // Display the inverse key matrix
+        System.out.println("Inverse Key Matrix:");
+        for (int[] row : inverseKeyMatrix) {
+            for (int element : row) {
+                System.out.print(element + " ");
+            }
+            System.out.println();
+        }
+
+        // Input plaintext
+        System.out.print("Enter the plaintext (lowercase only): ");
+        scanner.nextLine(); // Consume the remaining newline
+        String plaintext = scanner.nextLine();
+
+        // Encrypt
+        String ciphertext = encrypt(plaintext, keyMatrix, modulus);
+        System.out.println("Encrypted Ciphertext: " + ciphertext);
+
+        // Decrypt
+        String decryptedText = decrypt(ciphertext, inverseKeyMatrix, modulus);
+        System.out.println("Decrypted Plaintext: " + decryptedText);
+
+        scanner.close();
+    }
+}
